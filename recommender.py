@@ -1,12 +1,3 @@
-"""Ядро RAG-системы Astana Walk AI.
-
-Конвейер:  запрос -> разбор (язык, интересы, время, группа) -> локация -> географический фильтр ->
-           проверка часов работы/ограничений -> текстовый поиск (TF-IDF) -> ранжирование ->
-           расчёт времени в пути -> (мини-маршрут) -> объяснения (шаблоны или LLM) ->
-           ПРОВЕРКА результата по базе -> выдача с пометкой источников.
-
-Виды происхождения фактов (kind):  POI = из базы OSM,  CALC = вычислено приложением,
-IDEA = идея-шаблон (не факт из базы),  AI = текст языковой модели (проверен),  UNKNOWN = данных нет."""
 from __future__ import annotations
 
 import math
@@ -40,11 +31,11 @@ class Request:
     lat: Optional[float] = None
     lon: Optional[float] = None
     minutes: Optional[int] = None
-    budget: str = "any"                       # any | free
+    budget: str = "any"                  # any | free
     interests: list = field(default_factory=list)   # имена категорий
     wheelchair: bool = False
     group_size: Optional[int] = None
-    lang: Optional[str] = None                # ru | en | None (авто)
+    lang: Optional[str] = None                  # ru | en | None (авто)
     now: Optional[datetime] = None
     use_osrm: bool = False
     use_llm: bool = False
@@ -74,7 +65,7 @@ def _fetched_age_days(fetched_at, now):
 
 def _completeness(p):
     pts = sum([bool(p.get("opening_hours")), bool(p.get("address")),
-               bool(p.get("phone") or p.get("website")), p.get("description_source") == "osm_description"])
+                bool(p.get("phone") or p.get("website")), p.get("description_source") == "osm_description"])
     return pts
 
 
@@ -143,8 +134,6 @@ def _make_item(p, straight, walk_m, method, state, parsed, cat_w, lang, now, sco
 
 
 def verify_items(items, pois_by_id):
-    """Шаг проверки: каждая рекомендация должна ссылаться на реальную запись базы,
-    а числа (расстояние, время) — совпадать с вычислениями. Возвращает (годные, проблемы)."""
     good, problems = [], []
     for it in items:
         p = pois_by_id.get(it["id"])
@@ -174,40 +163,38 @@ def recommend(req, pois, index=None):
 
     if not parsed.supported:
         return _fail(result, L(lang, "Не удалось распознать язык запроса. Я понимаю русский, английский и частично казахский — переформулируйте, пожалуйста.",
-                               "I could not recognise the language of the request. I understand Russian, English and partly Kazakh — please rephrase."))
+                              "I could not recognise the language of the request. I understand Russian, English and partly Kazakh — please rephrase."))
     if not (req.query or "").strip() and not req.interests:
         return _fail(result, L(lang, "Опишите, что вы ищете, или выберите интересы в боковой панели.",
-                               "Describe what you are looking for or pick interests in the sidebar."))
+                              "Describe what you are looking for or pick interests in the sidebar."))
     if not pois:
         return _fail(result, L(lang, "База POI пуста. Запустите collect_poi.py и process_data.py (см. README).",
-                               "The POI database is empty. Run collect_poi.py and process_data.py (see README)."))
+                              "The POI database is empty. Run collect_poi.py and process_data.py (see README)."))
     if parsed.language == "kk":
         notes.append(L(lang, "Запрос на казахском понят по ключевым словам; ответ дан на русском.",
-                       "Kazakh request understood by keywords; the answer is given in Russian."))
+                        "Kazakh request understood by keywords; the answer is given in Russian."))
 
-    # --- локация -------------------------------------------------------------------------------
     if parsed.landmark:
         lm = get_landmark(parsed.landmark)
         lat, lon, origin = lm["lat"], lm["lon"], lm[lang if lang in lm else "ru"]
         notes.append(L(lang, f"Локация взята из вашего запроса: {origin} (координаты ориентира приблизительные).",
-                       f"Location taken from your request: {origin} (landmark coordinates are approximate)."))
+                        f"Location taken from your request: {origin} (landmark coordinates are approximate)."))
     elif req.lat is not None and req.lon is not None:
         lat, lon, origin = req.lat, req.lon, L(lang, "точка, выбранная в интерфейсе", "point chosen in the UI")
     else:
         return _fail(result, L(lang, "Укажите, где вы находитесь: выберите точку в боковой панели или назовите ориентир в запросе.",
-                               "Tell me where you are: pick a point in the sidebar or name a landmark in your request."))
+                              "Tell me where you are: pick a point in the sidebar or name a landmark in your request."))
     if not in_astana_area(lat, lon):
         return _fail(result, L(lang, "Координаты некорректны или находятся вне Астаны. Проверьте широту и долготу (Астана ≈ 51.1° с.ш., 71.4° в.д.).",
-                               "Coordinates are invalid or outside Astana. Check latitude/longitude (Astana ≈ 51.1°N, 71.4°E)."))
+                              "Coordinates are invalid or outside Astana. Check latitude/longitude (Astana ≈ 51.1°N, 71.4°E)."))
     result["origin"] = {"name": origin, "lat": lat, "lon": lon}
 
-    # --- время ---------------------------------------------------------------------------------
     minutes = parsed.minutes or req.minutes or 90
     usable = minutes
     if parsed.flight:
         usable = minutes - req.flight_buffer_min
         notes.append(L(lang, f"Вы упомянули вылет: из {minutes} мин закладываю {req.flight_buffer_min} мин на дорогу в аэропорт и регистрацию. На прогулку остаётся {max(usable, 0)} мин.",
-                       f"You mentioned a flight: out of {minutes} min I reserve {req.flight_buffer_min} min for getting to the airport and check-in. {max(usable, 0)} min left for a walk."))
+                        f"You mentioned a flight: out of {minutes} min I reserve {req.flight_buffer_min} min for getting to the airport and check-in. {max(usable, 0)} min left for a walk."))
         if usable < 25:
             return _fail(result, L(lang, f"До вылета слишком мало времени для безопасной прогулки (свободно {max(usable, 0)} мин). Лучше остаться в аэропорту.",
                                    f"Too little time before departure for a safe walk ({max(usable, 0)} min free). It is better to stay at the airport."))
@@ -217,7 +204,6 @@ def recommend(req, pois, index=None):
     free_only = parsed.free or req.budget == "free"
     radius = max(MIN_RADIUS_M, min(MAX_RADIUS_M, 0.5 * usable * WALK_SPEED_M_MIN / DETOUR_FACTOR))
 
-    # --- веса категорий ------------------------------------------------------------------------
     cat_w = dict(parsed.categories)
     for c in req.interests:
         cat_w[c] = max(cat_w.get(c, 0), 1.0)
@@ -225,15 +211,15 @@ def recommend(req, pois, index=None):
     if general:
         cat_w = dict(DEFAULT_CATS)
         notes.append(L(lang, "Запрос общий — показываю типичные места для прогулки (парки, достопримечательности, смотровые).",
-                       "The request is generic — showing typical walking spots (parks, sights, viewpoints)."))
+                        "The request is generic — showing typical walking spots (parks, sights, viewpoints)."))
     if parsed.events:
         notes.append(L(lang, "Актуальных данных о мероприятиях и выставках у системы нет — не утверждаю, что что-то проходит сейчас; проверьте афишу.",
-                       "The system has no live event data — I do not claim anything is on right now; please check the programme."))
+                        "The system has no live event data — I do not claim anything is on right now; please check the programme."))
     if parsed.car:
         notes.append(L(lang, "Поддерживаются только пешие прогулки — рассчитано пешком.", "Only walking is supported — everything is calculated on foot."))
     if free_only:
         notes.append(L(lang, "«Бесплатно» определено по категории (эвристика) и тегу fee=no; цен в базе нет.",
-                       "“Free” is inferred from category (heuristic) and the fee=no tag; the database has no prices."))
+                        "“Free” is inferred from category (heuristic) and the fee=no tag; the database has no prices."))
 
     result["data_used"] = [
         L(lang, f"Локация: {origin} ({lat:.4f}, {lon:.4f}) — используется только в этом запросе и не сохраняется",
@@ -249,11 +235,10 @@ def recommend(req, pois, index=None):
     if group and group >= 3:
         result["data_used"].append(L(lang, f"Группа: {group} чел.", f"Group: {group} people"))
 
-    # --- географический фильтр + ограничения ---------------------------------------------------
     within = within_radius(pois, lat, lon, radius)
     if not within:
         return _fail(result, L(lang, f"В радиусе {radius:.0f} м не найдено ни одного места в базе. Увеличьте время или выберите другую локацию.",
-                               f"No places in the database within {radius:.0f} m. Increase the time or choose another location."))
+                              f"No places in the database within {radius:.0f} m. Increase the time or choose another location."))
     excluded = {"closed": 0, "wheelchair_no": 0, "paid": 0}
     cands = []
     for idx, d in within:
@@ -280,12 +265,11 @@ def recommend(req, pois, index=None):
     elif cands:
         relaxed = True
         notes.append(L(lang, "Точных совпадений по категории нет — показываю ближайшие подходящие по тексту варианты.",
-                       "No exact category matches — showing nearby text-based matches."))
+                        "No exact category matches — showing nearby text-based matches."))
     if not cands:
         return _fail(result, L(lang, "Подходящих мест с учётом ограничений (часы работы, доступность, бюджет) не найдено. Попробуйте смягчить условия.",
-                               "No places match the constraints (hours, accessibility, budget). Try relaxing them."))
+                              "No places match the constraints (hours, accessibility, budget). Try relaxing them."))
 
-    # --- текстовый поиск + ранжирование --------------------------------------------------------
     index = index or POIIndex(pois)
     expansion = " ".join(normalize(req.query).split())
     text_scores = index.scores(expansion, [c[0] for c in cands])
@@ -310,7 +294,6 @@ def recommend(req, pois, index=None):
         ranked.append((s, idx, d, state))
     ranked.sort(key=lambda x: x[0], reverse=True)
 
-    # --- время в пути и ограничение по времени -------------------------------------------------
     osrm_on = req.use_osrm
     pool = []
     for s, idx, d, state in ranked[:8]:
@@ -319,7 +302,7 @@ def recommend(req, pois, index=None):
         if osrm_on and method == "estimate":
             osrm_on = False
             notes.append(L(lang, "Сервис пеших маршрутов недоступен — расстояния рассчитаны приблизительно.",
-                           "The walking-route service is unavailable — distances are estimated."))
+                            "The walking-route service is unavailable — distances are estimated."))
         item = _make_item(p, d, walk_m, method, state, parsed, cat_w, lang, now, s, wheelchair)
         pool.append(item)
     fit = [it for it in pool if it["total_min"] <= usable]
@@ -327,9 +310,8 @@ def recommend(req, pois, index=None):
         pool.sort(key=lambda it: it["total_min"])
         fit = pool[:1]
         notes.append(L(lang, f"Ни одно место не укладывается в {usable} мин (дорога + посещение); показываю ближайшее — оно займёт больше времени.",
-                       f"No place fits into {usable} min (walk + visit); showing the closest one — it will take longer."))
+                        f"No place fits into {usable} min (walk + visit); showing the closest one — it will take longer."))
 
-    # разнообразие: не больше 2 мест одной категории, если запрос широкий
     chosen, per_cat = [], {}
     wide = len(cat_w) >= 3
     for it in fit:
@@ -348,7 +330,6 @@ def recommend(req, pois, index=None):
         return _fail(result, L(lang, "Не удалось сформировать проверенные рекомендации.", "Could not build verified recommendations."))
     result["items"] = chosen
 
-    # --- мини-маршрут --------------------------------------------------------------------------
     can_route = (req.want_route or parsed.route_words) and not parsed.work and usable >= 60 \
         and len(fit) >= 2 and len({it["category"] for it in fit}) >= 2
     if can_route:
@@ -362,7 +343,6 @@ def recommend(req, pois, index=None):
                              "Times are approximate: walking ≈ 4.8 km/h plus typical visit time per category.")
             result["route"] = plan
 
-    # --- генерация объяснений (необязательно) --------------------------------------------------
     if req.use_llm:
         texts, status = llm.explain(req.query, chosen, lang)
         result["llm_status"] = status
@@ -373,5 +353,5 @@ def recommend(req, pois, index=None):
         else:
             result["mode"] = "template_after_llm_fail"
             notes.append(L(lang, "Языковая модель недоступна или её ответ не прошёл проверку — использован режим шаблонов.",
-                           "The language model is unavailable or its answer failed verification — template mode used."))
+                            "The language model is unavailable or its answer failed verification — template mode used."))
     return result

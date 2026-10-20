@@ -1,5 +1,3 @@
-"""Разбор часов работы OSM (opening_hours). Поддерживаем простые форматы.
-Всё, что не удалось разобрать надёжно, возвращает "unknown" — мы не гадаем."""
 import re
 
 DAYS = ["mo", "tu", "we", "th", "fr", "sa", "su"]
@@ -31,7 +29,6 @@ def _expand_days(spec):
 
 
 def parse_hours(text):
-    """Возвращает "always", словарь {день: [(старт, конец), ...]} (минуты) или None."""
     s = (text or "").strip()
     if not s:
         return None
@@ -60,7 +57,7 @@ def parse_hours(text):
                 start = int(h1) * 60 + int(m1)
                 end = int(h2) * 60 + int(m2)
                 if end <= start:
-                    end += 1440  # заканчивается после полуночи
+                    end += 1440
                 intervals.append((start, end))
         else:
             return None
@@ -70,7 +67,6 @@ def parse_hours(text):
 
 
 def check_open(opening_hours, when):
-    """Возвращает (состояние, пояснение). Состояние: open | closed | unknown."""
     if not opening_hours:
         return "unknown", "no_hours"
     table = parse_hours(opening_hours)

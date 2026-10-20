@@ -1,11 +1,3 @@
-"""Шаг 1. Автоматический сбор POI Астаны из OpenStreetMap через Overpass API.
-
-Запуск:   python collect_poi.py  (через .venv, см. README)
-Заново:   python collect_poi.py --refresh
-
-Особенности: запросы разбиты на группы (меньше нагрузка на сервер), есть повторные попытки,
-два зеркала API, кэш по группам (повторный запуск не качает уже собранное), пауза между запросами.
-Данные © участники OpenStreetMap, лицензия ODbL (https://www.openstreetmap.org/copyright)."""
 import argparse
 import json
 import time
@@ -31,7 +23,7 @@ GROUPS = {
 
 def build_query(filters):
     s, w, n, e = ASTANA_BBOX
-    body = "\n".join(f"  nwr{f}({s},{w},{n},{e});" for f in filters)
+    body = "\n".join(f"   nwr{f}({s},{w},{n},{e});" for f in filters)
     return f"[out:json][timeout:120];\n(\n{body}\n);\nout center tags;"
 
 
@@ -76,10 +68,10 @@ def main():
             payload = {"fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "elements": elements}
             cache.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
             print(f"[{name}] получено {len(elements)} объектов")
-            time.sleep(5)  # вежливая пауза для публичного API
+            time.sleep(5)
         for el in payload["elements"]:
             el["_fetched_at"] = payload["fetched_at"]
-            merged[f"{el.get('type')}/{el.get('id')}"] = el  # дедупликация по id OSM
+            merged[f"{el.get('type')}/{el.get('id')}"] = el
 
     if not merged:
         print("Нет данных. Проверьте интернет и запустите снова.")

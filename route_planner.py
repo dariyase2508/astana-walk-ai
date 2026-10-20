@@ -1,5 +1,3 @@
-"""Пешие расстояния и мини-маршрут. По умолчанию — оценка (прямая × коэффициент).
-Опционально — реальный пешеходный маршрут через публичный OSRM (с автоматическим откатом на оценку)."""
 import math
 from functools import lru_cache
 
@@ -8,7 +6,6 @@ import requests
 from config import DETOUR_FACTOR, USER_AGENT, WALK_SPEED_M_MIN
 from geo import haversine_m
 
-# Публичный пешеходный сервер OSM (fair use). Если недоступен — работает оценка.
 OSRM_URL = "https://routing.openstreetmap.de/routed-foot/route/v1/foot"
 
 
@@ -24,12 +21,11 @@ def _osrm_distance(lat1, lon1, lat2, lon2):
 
 
 def walk_distance(a, b, use_osrm=False):
-    """a, b = (lat, lon). Возвращает (метры, метод): 'osrm' или 'estimate'."""
     if use_osrm:
         try:
             return _osrm_distance(round(a[0], 5), round(a[1], 5), round(b[0], 5), round(b[1], 5)), "osrm"
         except Exception:
-            pass  # сеть/сервис недоступны -> честный откат на оценку
+            pass
     return haversine_m(a[0], a[1], b[0], b[1]) * DETOUR_FACTOR, "estimate"
 
 
@@ -38,8 +34,6 @@ def minutes_for(meters):
 
 
 def plan_route(start, items, budget_min, use_osrm=False, max_stops=3):
-    """Жадно собирает маршрут из до 3 мест, укладываясь во время (ходьба + визиты).
-    items: словари с lat, lon, score, category, visit_min, id. Возвращает dict или None."""
     remaining = list(items)
     stops, legs = [], []
     total = 0
@@ -62,7 +56,7 @@ def plan_route(start, items, budget_min, use_osrm=False, max_stops=3):
         d, method = walk_distance(pos, (it["lat"], it["lon"]), use_osrm)
         walk = minutes_for(d)
         if total + walk + it["visit_min"] > budget_min:
-            continue  # реальный маршрут оказался длиннее оценки
+            continue
         total += walk + it["visit_min"]
         legs.append({"to": it["id"], "distance_m": round(d, -1), "walk_min": walk, "method": method})
         stops.append(it)

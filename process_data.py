@@ -1,6 +1,3 @@
-"""Шаг 2. Очистка и подготовка данных: raw_osm.json -> poi_clean.json.
-
-Запуск: python process_data.py  (через .venv, см. README)"""
 import json
 from collections import Counter
 from datetime import datetime, timezone
@@ -13,7 +10,6 @@ OSM_LICENSE = "© участники OpenStreetMap, ODbL"
 
 
 def category_from_tags(tags):
-    """Приводит теги OSM к одной из наших категорий (или None, если место нам не подходит)."""
     t = tags
     tour, amen, leis, hist, shop = (t.get(k) for k in ("tourism", "amenity", "leisure", "historic", "shop"))
     if tour == "museum": return "museum"
@@ -47,7 +43,6 @@ def element_coords(el):
 
 
 def build_record(el):
-    """Превращает элемент OSM в запись POI. Возвращает None, если запись непригодна."""
     tags = el.get("tags") or {}
     cat = category_from_tags(tags)
     if cat is None:
@@ -64,7 +59,7 @@ def build_record(el):
     address = ", ".join(x for x in (tags.get("addr:street"), tags.get("addr:housenumber")) if x)
     if not name:
         if cat != "playground":
-            return None  # места без названия оставляем только для детских площадок
+            return None
         name = "Детская площадка (без названия)"
 
     desc_osm = tags.get("description:ru") or tags.get("description") or tags.get("description:en") or ""
@@ -99,7 +94,7 @@ def build_record(el):
         "website": tags.get("website") or tags.get("contact:website") or "",
         "wheelchair": tags.get("wheelchair", ""),
         "internet_access": internet,
-        "power_supply": True if power else None,   # None = данных нет
+        "power_supply": True if power else None,
         "fee": tags.get("fee", ""),
         "cuisine": cuisine,
         "source": "OpenStreetMap (Overpass API)",
@@ -117,8 +112,6 @@ def richness(rec):
 
 
 def dedupe(records, max_dist_m=60):
-    """Убирает дубликаты: то же название и категория (или две безымянные площадки) в радиусе 60 м.
-    Из дубликатов остаётся запись с наибольшим количеством заполненных полей."""
     kept = []
     for rec in sorted(records, key=richness, reverse=True):
         dup = False

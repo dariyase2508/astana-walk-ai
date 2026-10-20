@@ -1,8 +1,3 @@
-"""Шаг 4. Прогон тестовых сценариев на РЕАЛЬНЫХ данных и запись фактических результатов.
-
-Запуск: python run_scenarios.py            (через .venv, см. README)
-Результат: docs/TEST_RESULTS.md — настоящие ответы системы + автоматические проверки.
-Ничего не подготовлено заранее: файл перезаписывается при каждом запуске."""
 import argparse
 import json
 from datetime import datetime, timedelta, timezone
@@ -48,7 +43,6 @@ EDGE = [
 
 
 def check_result(res, usable_hint=None):
-    """Автоматические проверки инвариантов. Возвращает список (название, прошла?)."""
     checks = []
     if not res["ok"]:
         checks.append(("ошибка/пустой результат сообщена текстом", bool(res["message"])))
@@ -114,7 +108,7 @@ def main():
         kwargs.setdefault("now", NOW)
         original = route_planner.OSRM_URL
         if sid == "E7":
-            route_planner.OSRM_URL = "http://127.0.0.1:9/none"   # заведомо недоступный адрес
+            route_planner.OSRM_URL = "http://127.0.0.1:9/none"
         try:
             res = recommend(Request(query=query, lat=loc[0], lon=loc[1], **kwargs), db, idx)
         finally:

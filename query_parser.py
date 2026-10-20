@@ -1,5 +1,3 @@
-"""Разбор запроса пользователя: язык, интересы, время, группа, ограничения.
-Работает на правилах (без LLM), поэтому быстро, бесплатно и предсказуемо."""
 import re
 from dataclasses import dataclass, field
 from typing import Optional
@@ -8,7 +6,6 @@ from landmarks import find_landmark
 
 KK_ONLY = set("әіңғүұқөһ")
 
-# (имя, регулярка, {категория: вес}, {флаги})
 INTENTS = [
     ("coffee", r"кофе|кофейн|\bкафе\b|coffee|\bcafe\b|\bчай\b|\btea\b|кофехаус", {"cafe": 1.0}, {}),
     ("food", r"поесть|покушать|обед|ужин|завтрак|ресторан|голод|\beat\b|\bfood\b|lunch|dinner|restaurant|hungry|тамақ",
@@ -82,7 +79,6 @@ def detect_language(text):
 
 
 def parse_minutes(t):
-    """Доступное время в минутах или None. Диапазон "1–2 часа" -> берём верхнюю границу."""
     m = re.search(r"(?<![\d.])(\d{1,3})\s*[-–—]\s*(\d{1,3})\s*(?:мин|min)", t)
     if m:
         return int(m.group(2))

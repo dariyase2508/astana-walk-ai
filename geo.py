@@ -1,4 +1,3 @@
-"""Географические функции: расстояние, проверка координат, фильтр по радиусу."""
 import math
 
 from config import ASTANA_BBOX
@@ -7,7 +6,6 @@ EARTH_RADIUS_M = 6371000.0
 
 
 def haversine_m(lat1, lon1, lat2, lon2):
-    """Расстояние по прямой между двумя точками (метры)."""
     p1, p2 = math.radians(lat1), math.radians(lat2)
     dphi = p2 - p1
     dlmb = math.radians(lon2 - lon1)
@@ -16,7 +14,6 @@ def haversine_m(lat1, lon1, lat2, lon2):
 
 
 def valid_coords(lat, lon):
-    """Координаты — настоящие числа в допустимом диапазоне."""
     try:
         lat, lon = float(lat), float(lon)
     except (TypeError, ValueError):
@@ -27,7 +24,6 @@ def valid_coords(lat, lon):
 
 
 def in_astana_area(lat, lon, margin=0.05):
-    """Точка лежит в рамке Астаны (с небольшим запасом)."""
     if not valid_coords(lat, lon):
         return False
     s, w, n, e = ASTANA_BBOX
@@ -35,7 +31,6 @@ def in_astana_area(lat, lon, margin=0.05):
 
 
 def within_radius(pois, lat, lon, radius_m):
-    """Список (индекс_POI, расстояние_м) для мест внутри радиуса, ближайшие первыми."""
     out = []
     for i, p in enumerate(pois):
         if not valid_coords(p.get("lat"), p.get("lon")):

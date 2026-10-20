@@ -1,5 +1,3 @@
-"""Единый справочник категорий: подписи, ключевые слова для поиска, время визита, идеи."""
-
 CATEGORY_INFO = {
     "cafe": {"ru": "Кафе", "en": "Cafe", "kk": "Кафе",
              "keywords": "кафе кофейня кофе coffee cafe чай tea", "visit_min": 40,
@@ -74,7 +72,6 @@ CATEGORY_INFO = {
                "idea_en": "Browse the market; check opening hours."},
 }
 
-# Категории, которые мы считаем "обычно бесплатными" (это эвристика, не факт!)
 FREE_LIKELY = {"park", "playground", "viewpoint", "monument", "artwork", "attraction"}
 PAID_LIKELY = {"cafe", "restaurant", "cinema", "nightlife", "mall", "zoo", "entertainment"}
 

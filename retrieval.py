@@ -1,5 +1,3 @@
-"""Поиск кандидатов: географический фильтр + текстовый (TF-IDF по словам и 3-граммам символов).
-Символьные 3-граммы дают устойчивость к падежам и опечаткам ("музей"/"музеи"/"музее")."""
 import math
 import re
 from collections import Counter
@@ -23,7 +21,6 @@ def features(text):
 
 
 class POIIndex:
-    """Индекс по полю search_text каждой записи POI."""
 
     def __init__(self, pois):
         self.pois = pois
@@ -42,7 +39,6 @@ class POIIndex:
         return {f: x / norm for f, x in v.items()}
 
     def scores(self, query_text, indices):
-        """Косинусная близость запроса к документам с данными индексами -> {индекс: 0..1}."""
         qv = self._vec(features(query_text))
         out = {}
         for i in indices:

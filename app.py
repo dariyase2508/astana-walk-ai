@@ -1,5 +1,3 @@
-"""Astana Walk AI — интерфейс (Streamlit). Команда Unsurprised.
-Запуск: python -m streamlit run app.py   (через .venv, см. README)"""
 import json
 from datetime import datetime, time, timedelta, timezone
 
@@ -43,7 +41,6 @@ def set_example(text):
 pois, index = load_data()
 tz = timezone(timedelta(hours=TZ_HOURS))
 
-# ------------------------------------------------------------------ боковая панель
 with st.sidebar:
     st.header("Параметры")
     loc_mode = st.radio("Где вы находитесь?", ["Ориентир из списка", "Свои координаты"])
@@ -75,7 +72,6 @@ with st.sidebar:
         st.write("Координаты используются только для текущего поиска и нигде не сохраняются и не логируются. "
                  "В языковую модель (если включена) уходит только текст запроса и данные найденных мест — без координат.")
 
-# ------------------------------------------------------------------ основная часть
 st.markdown(ui.brand_html(), unsafe_allow_html=True)
 if not pois:
     st.error("База мест пуста. Выполните `collect_poi.py`, затем `process_data.py` (см. README).")
